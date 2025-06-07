@@ -10,6 +10,7 @@ This project presents a complete pipeline for automated segmentation of the spin
 We propose an integrated solution based on U-Net convolutional neural networks for segmentation and multiple linear regression for adjusting CSA values based on demographic variables such as age, sex, height, weight, and scanner type.
 
 🏗️ Key Components
+
 1. Dataset
 Spine Generic dataset with 208 T2-weighted 3D MRI scans from healthy individuals.
 
@@ -33,6 +34,8 @@ Intersection over Union (IoU): 0.8742
 Accuracy: 0.9992
 
 Loss: 0.0747
+![uhv](https://github.com/user-attachments/assets/65e32064-6808-4410-aab8-498a9a25ae87)
+![742](https://github.com/user-attachments/assets/9e80e121-f65a-45fd-b3bd-4d6b9af214cd)
 
 3. CSA Measurement
 CSA computed at the C2–C3 vertebral level using SCT commands:
