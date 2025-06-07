@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
+import 'user_database.dart';
 import 'ProfilePage.dart';
 import 'SignUp.dart';
 
@@ -44,11 +44,24 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _login() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => ProfilePage()),
-    );
+  void _login() async {
+    if (_formKey.currentState!.validate()) {
+      final user = await UserDatabase.instance.getUser(
+        _emailController.text,
+        _passwordController.text,
+      );
+
+      if (user != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => ProfilePage()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Invalid email or password')),
+        );
+      }
+    }
   }
 
   @override

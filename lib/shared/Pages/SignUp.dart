@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'user_database.dart'; // adapte le chemin
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -23,17 +24,27 @@ class _SignUpPageState extends State<SignUpPage> {
     super.dispose();
   }
 
-  void _signUp() {
+
+  void _signUp() async {
     if (_formKey.currentState!.validate()) {
-      // Perform sign-up logic here
-      print('Name: ${_nameController.text}');
-      print('Email: ${_emailController.text}');
-      print('Password: ${_passwordController.text}');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Sign Up Successful!')),
-      );
+      try {
+        await UserDatabase.instance.insertUser(
+          _nameController.text,
+          _emailController.text,
+          _passwordController.text,
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sign Up Successful!')),
+        );
+        Navigator.pop(context); // Retourne à la page de login
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: Email already exists')),
+        );
+      }
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

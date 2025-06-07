@@ -1,43 +1,58 @@
-import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
+import 'package:http/http.dart' as http;
 
 class ApiService {
-  final String baseUrl = 'http://192.168.100.77:5000';
+  final String baseUrl = 'http://172.20.10.4:5000';
 
-  Future<String> sendMRIData({
-    required double age,
-    required String gender,
+  Future<Map<String, dynamic>> sendMRIData({
+    required int sex, // 0 = Homme, 1 = Femme
     required double weight,
     required String filePath,
   }) async {
     try {
-      var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/predict'));
+      var uri = Uri.parse('$baseUrl/process_and_predict');
+      var request = http.MultipartRequest('POST', uri);
 
-      request.fields['age'] = age.toString();
-      request.fields['sex'] = gender;
+      // Required form fields
+      request.fields['sex'] = sex.toString();
       request.fields['weight'] = weight.toString();
 
-      request.files.add(await http.MultipartFile.fromPath('file', filePath));
+      // Add MRI file
+      request.files.add(await http.MultipartFile.fromPath('mri', filePath));
 
+      // Send the request
       var response = await request.send();
-
-      String responseStr = await response.stream.bytesToString();
+      final responseStr = await response.stream.bytesToString();
 
       if (response.statusCode == 200) {
-        try {
-          final jsonData = json.decode(responseStr);
-          return jsonData['normalized_csa'] != null
-              ? ' CSA Normalisée: ${jsonData['normalized_csa']}'
-              : ' Réponse: $jsonData';
-        } catch (e) {
-          return '❌ Erreur de décodage JSON : $e\nRéponse brute : $responseStr';
-        }
+        final jsonData = json.decode(responseStr);
+
+        return {
+          'success': true,
+          'data': {
+            'subject_id': jsonData['subject_id'],
+            'mean_measured_csa': jsonData['mean_measured_csa'],
+            'mean_normalized_csa': jsonData['mean_normalized_csa'],
+            'count': jsonData['count'],
+            'mean_area_avg_from_tsv': jsonData['mean_area_avg_from_tsv'],
+            'timestamps': jsonData['timestamps_from_tsv'],
+            'values': jsonData['mean_area_values_from_tsv'],
+            'plot_base64': jsonData['prediction_plot_png_base64'],
+          }
+        };
       } else {
-        return '❌ Erreur serveur (${response.statusCode}) : $responseStr';
+        return {
+          'success': false,
+          'error': 'Erreur serveur (${response.statusCode})',
+          'response': responseStr,
+        };
       }
     } catch (e) {
-      return '❌ Exception lors de l\'envoi : ${e.toString()}';
+      return {
+        'success': false,
+        'error': 'Exception lors de l’envoi : $e',
+      };
     }
   }
 }

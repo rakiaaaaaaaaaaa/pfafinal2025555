@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:file_picker/file_picker.dart';
 
+
 import '../../api_service.dart';
 import 'LoginPage.dart';
+import 'ResultPage.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -14,74 +16,103 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   final _formKey = GlobalKey<FormState>();
-  final _ageController = TextEditingController();
-  final _heightController = TextEditingController();
+  final _weightController = TextEditingController();  // Ajout poids
   String? _selectedGender;
   String? _imagePath;
-  String? _mriFilePath;
-  String? _predictionResult; // ✅ NEW: store result here
+  bool _isLoading = false;
 
   @override
   void dispose() {
-    _ageController.dispose();
-    _heightController.dispose();
+    _weightController.dispose();
     super.dispose();
   }
+  Future<void> _pickImage() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        allowMultiple: false,
+      );
 
-  Future<void> _pickMRIFile() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.any);
+      if (result != null && result.files.single.path != null) {
+        final path = result.files.single.path!;
+        final fileName = path.toLowerCase();
 
-    if (result != null && result.files.single.path != null) {
-      setState(() {
-        _mriFilePath = result.files.single.path;
-      });
-    } else {
+        if (fileName.endsWith('.nii') || fileName.endsWith('.nii.gz')) {
+          setState(() {
+            _imagePath = path;
+          });
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Seuls les fichiers .nii ou .nii.gz sont acceptés')),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Aucun fichier sélectionné')),
+        );
+      }
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Aucun fichier NIfTI sélectionné')),
+        SnackBar(content: Text('Erreur lors de la sélection du fichier: $e')),
       );
     }
   }
 
   Future<void> _showResult() async {
     if (_formKey.currentState!.validate()) {
-      if (_mriFilePath == null) {
+      if (_imagePath == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Veuillez sélectionner un fichier MRI (.nii/.nii.gz)')),
+          const SnackBar(content: Text('Veuillez sélectionner une image')),
         );
         return;
       }
 
+      setState(() => _isLoading = true); // ADD THIS
       try {
         final api = ApiService();
         final result = await api.sendMRIData(
-          age: double.parse(_ageController.text),
-          gender: _selectedGender == 'Homme' ? 'M' : 'F',
-          weight: double.parse(_heightController.text),
-          filePath: _mriFilePath!,
+          sex: _selectedGender == 'Homme' ? 0 : 1,
+          weight: double.parse(_weightController.text),
+          filePath: _imagePath!,
         );
 
-        setState(() {
-          _predictionResult = result; // ✅ Store result
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Résultat reçu')),
-        );
+        if (result['success']) {
+          if (!mounted) return; // Prevent context issues
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ResultPage(
+                imagePath: _imagePath!,
+                predictionResult: result['data'],
+              ),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erreur: ${result['error']}')),
+          );
+        }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erreur : ${e.toString()}')),
         );
+      } finally {
+        setState(() => _isLoading = false); // ADD THIS TOO
       }
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Profil',
-          style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold),
+          'Entrez les informations nécessaires:',
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         actions: [
           IconButton(
@@ -130,23 +161,13 @@ class _ProfilePageState extends State<ProfilePage> {
           key: _formKey,
           child: ListView(
             children: [
-              TextFormField(
-                controller: _ageController,
-                decoration: InputDecoration(
-                  labelText: 'Âge',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  prefixIcon: const Icon(Icons.calendar_today),
-                ),
-                keyboardType: TextInputType.number,
-                validator: (value) =>
-                (value == null || value.isEmpty) ? 'Veuillez entrer votre âge' : null,
-              ),
-              const SizedBox(height: 20),
               DropdownButtonFormField<String>(
                 value: _selectedGender,
                 decoration: InputDecoration(
                   labelText: 'Sexe',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   prefixIcon: const Icon(Icons.person),
                 ),
                 items: ['Homme', 'Femme']
@@ -165,32 +186,44 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               const SizedBox(height: 20),
               TextFormField(
-                controller: _heightController,
+                controller: _weightController,
                 decoration: InputDecoration(
-                  labelText: 'Taille (en cm)',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  prefixIcon: const Icon(Icons.height),
+                  labelText: 'Poids (en kg)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  prefixIcon: const Icon(Icons.monitor_weight),
                 ),
-                keyboardType: TextInputType.number,
-                validator: (value) =>
-                (value == null || value.isEmpty) ? 'Veuillez entrer votre taille' : null,
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'Veuillez entrer votre poids';
+                  final w = double.tryParse(value);
+                  if (w == null) return 'Entrez un poids valide';
+                  if (w <= 0) return 'Le poids doit être supérieur à zéro';
+                  return null;
+                },
               ),
               const SizedBox(height: 20),
               GestureDetector(
-                onTap: _pickMRIFile,
+                onTap: _pickImage,
                 child: Container(
-                  height: 100,
+                  height: 150,
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.grey),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Center(
+                  child: _imagePath == null
+                      ? Center(
                     child: Text(
-                      _mriFilePath == null
-                          ? 'Cliquez pour ajouter un fichier MRI (.nii)'
-                          : 'Fichier sélectionné : ${_mriFilePath!.split('/').last}',
+                      'Cliquez pour ajouter un fichier MRI (.nii/.nii.gz)',
                       style: GoogleFonts.lato(color: Colors.grey),
                       textAlign: TextAlign.center,
+                    ),
+                  )
+                      : Center(
+                    child: Text(
+                      'Fichier sélectionné : ${_imagePath!.split('/').last}',
+                      style: GoogleFonts.lato(color: Colors.black87),
                     ),
                   ),
                 ),
@@ -199,7 +232,7 @@ class _ProfilePageState extends State<ProfilePage> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _showResult,
+                  onPressed: _isLoading ? null : _showResult,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blueAccent,
                     padding: const EdgeInsets.symmetric(vertical: 15),
@@ -207,7 +240,16 @@ class _ProfilePageState extends State<ProfilePage> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: Text(
+                  child: _isLoading
+                      ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                      : Text(
                     'Résultat',
                     style: GoogleFonts.lato(
                       fontSize: 18,
@@ -216,28 +258,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
               ),
-              // ✅ DISPLAY THE RESULT
-              if (_predictionResult != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 30),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.blueAccent),
-                    ),
-                    child: Text(
-                      _predictionResult!,
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
             ],
           ),
         ),
