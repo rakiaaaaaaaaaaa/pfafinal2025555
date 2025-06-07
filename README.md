@@ -86,11 +86,16 @@ Integrate with clinical decision support systems for personalized medicine.
 A full list of references is provided in the PDF report and includes key works by De Leener, Cohen-Adad, Boushila, and others in the field of spinal cord imaging.
 
 📦 Technologies Used
-Python, PyTorch – Deep learning
+Python,U-NET, PyTorch – Deep learning
 
 SCT (Spinal Cord Toolbox) – Medical image preprocessing
 
 Flutter – Mobile application
 
 Jupyter, Pandas, Matplotlib – Analysis and visualization
-
+![1](https://github.com/user-attachments/assets/e9960778-45ad-47ab-90f7-508cf2179d29)
+![2](https://github.com/user-attachments/assets/50599563-3160-464b-b84b-4f8367e08486)
+![3](https://github.com/user-attachments/assets/81befe3e-17b8-417f-b1fa-90e6f2b88c5f)
+![4](https://github.com/user-attachments/assets/e469730b-09d6-4d39-9183-a8bc325752e9)
+![5](https://github.com/user-attachments/assets/1ae7dc7b-a8d5-45a3-9b5c-6ac117f0e34c)
+![1237](https://github.com/user-attachments/assets/811e6c10-31e1-4963-badb-0b352e8e6719)
